@@ -49,7 +49,7 @@ func init() {
 // ProvideFirestore returns a *firestore.Client
 func initFirestore() (*firestore.Client, error) {
 	ctx = context.Background()
-	conf := &firebase.Config{ServiceAccountID: os.Getenv("GCP_PROJECT"), ProjectID: os.Getenv("GCP_PROJECT")}
+	conf := &firebase.Config{ProjectID: os.Getenv("GCP_PROJECT")}
 
 	app, err := firebase.NewApp(ctx, conf)
 	if err != nil {
