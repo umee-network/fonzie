@@ -6,20 +6,22 @@ go 1.18
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
 require (
+	cloud.google.com/go/firestore v1.6.1
+	firebase.google.com/go v3.13.0+incompatible
 	github.com/bwmarrin/discordgo v0.25.0
 	github.com/cosmos/btcutil v1.0.4
-	github.com/cosmos/cosmos-sdk v0.45.3
+	github.com/cosmos/cosmos-sdk v0.45.4
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/strangelove-ventures/lens v0.3.0
+	google.golang.org/api v0.63.0
+	google.golang.org/grpc v1.45.0
 )
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
-	cloud.google.com/go/firestore v1.6.1 // indirect
 	cloud.google.com/go/storage v1.10.0 // indirect
 	filippo.io/edwards25519 v1.0.0-beta.2 // indirect
-	firebase.google.com/go v3.13.0+incompatible // indirect
 	github.com/99designs/keyring v1.1.6 // indirect
 	github.com/ChainSafe/go-schnorrkel v0.0.0-20200405005733-88cbf1b4c40d // indirect
 	github.com/DataDog/zstd v1.4.5 // indirect
@@ -120,10 +122,8 @@ require (
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/api v0.63.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20211223182754-3ac035c7e7cb // indirect
-	google.golang.org/grpc v1.45.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
