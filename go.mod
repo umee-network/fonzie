@@ -13,7 +13,7 @@ require (
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/bwmarrin/discordgo v0.25.0
 	github.com/cosmos/btcutil v1.0.4
-	github.com/cosmos/cosmos-sdk v0.45.4
+	github.com/cosmos/cosmos-sdk v0.45.6
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/strangelove-ventures/lens v0.3.0
