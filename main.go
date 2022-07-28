@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -38,6 +39,7 @@ type ChainFunding = map[db.ChainPrefix]ChainFundingInfo
 
 var (
 	mnemonic           = os.Getenv("MNEMONIC")
+	port               = os.Getenv("PORT")
 	botToken           = os.Getenv("BOT_TOKEN")
 	rawChains          = os.Getenv("CHAINS")
 	rawFunding         = os.Getenv("FUNDING")
@@ -70,6 +72,10 @@ func init() {
 		log.SetFormatter(&log.TextFormatter{})
 	}
 
+	if port == "" {
+		port = "8080"
+		log.Printf("defaulting to port %s", port)
+	}
 	if mnemonic == "" {
 		log.Fatal("MNEMONIC is invalid")
 	}
@@ -151,6 +157,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Create http endpoint for faucet requests
+	http.HandleFunc("/", fh.faucetHttp)
+	log.Printf("listening on port %s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
+		log.Fatal(err)
+	}
+
 	// Wait here until CTRL-C or other term signal is received.
 	if isSilent {
 		log.Info("SILENT MODE:  The Fonz is still running, only reporting errors.  Press CTRL-C to exit.")
@@ -192,6 +205,78 @@ func NewFaucetHandler(chains chain.Chains, db db.Db) FaucetHandler {
 		ctx:     context.Background(),
 		db:      db,
 	}
+}
+
+func (fh FaucetHandler) faucetHttp(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	if !query.Has("wallet") {
+		httpError(w, "wallet is required")
+		return
+	}
+	wallet := strings.TrimSpace(query.Get("wallet"))
+	prefix, _, err := bech32.Decode(wallet, 1023)
+	if err != nil {
+		httpError(w, prefix+" is not supported: "+err.Error())
+		return
+	}
+
+	faucet, ok := fh.faucets[prefix]
+	if !ok {
+		httpError(w, prefix+" is not supported"+err.Error())
+		return
+	}
+	coins, err := cosmostypes.ParseCoinsNormalized(funding[prefix].Coins)
+	if err != nil {
+		httpError(w, "parsing coins: "+err.Error())
+		return
+	}
+	fees, err := cosmostypes.ParseCoinsNormalized(funding[prefix].Fees)
+	if err != nil {
+		httpError(w, "parsing fees: "+err.Error())
+		return
+	}
+
+	ipAddress := r.RemoteAddr
+	log.Infof("request from %s", ipAddress)
+	receipt, err := fh.db.GetFundingReceiptByUsernameAndChainPrefix(fh.ctx, ipAddress, prefix)
+	if err != nil {
+		httpError(w, err.Error())
+		return
+	}
+
+	if receipt != nil {
+		log.Infof("FETCHED RECEIPT RESULT: %#v", receipt.FundedAt.Add(fundingInterval).After(time.Now()))
+	}
+
+	if receipt != nil && receipt.FundedAt.Add(fundingInterval).After(time.Now()) {
+		httpError(w, (fmt.Errorf("you must wait %v until you can get %s funding again", time.Until(receipt.FundedAt.Add(fundingInterval)).Round(2*time.Second), prefix).Error()))
+		return
+	}
+
+	recipient, err := faucet.chain.DecodeAddr(wallet)
+	if err != nil {
+		httpError(w, "malformed destination address: "+err.Error())
+		return
+	}
+
+	faucet.channel <- FaucetReq{recipient, coins, fees, nil, nil}
+	err = fh.db.SaveFundingReceipt(fh.ctx, db.FundingReceipt{
+		ChainPrefix: prefix,
+		Username:    ipAddress,
+		FundedAt:    time.Now(),
+		Amount:      coins,
+	})
+	if err != nil {
+		log.Error(err)
+	}
+	// success
+	fmt.Fprintf(w, "%s faucet tokens sent to wallet: %s", prefix, wallet)
+}
+
+func httpError(w http.ResponseWriter, err string) {
+	w.Header().Set("x-faucet-error", err)
+	log.Errorf(err)
+	defer w.WriteHeader(http.StatusBadRequest)
 }
 
 // This function will be called (due to AddHandler above) every time a new
@@ -318,6 +403,9 @@ func isDM(m *discordgo.MessageCreate) bool {
 }
 
 func sendMessage(s *discordgo.Session, m *discordgo.MessageCreate, msg string) error {
+	if s == nil || m == nil {
+		return nil
+	}
 	if m.Author.Bot || isSilent && !isDM(m) {
 		// Silent mode is enabled, so-- only reply to DMs
 		return nil
@@ -334,6 +422,9 @@ func sendMessage(s *discordgo.Session, m *discordgo.MessageCreate, msg string) e
 }
 
 func sendReaction(s *discordgo.Session, m *discordgo.MessageCreate, reaction string) error {
+	if m == nil || s == nil {
+		return nil
+	}
 	if isSilent || m.Author.Bot {
 		return nil
 	}
