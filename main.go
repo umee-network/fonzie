@@ -236,9 +236,8 @@ func (fh FaucetHandler) faucetHttp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ipAddress := r.RemoteAddr
-	log.Infof("request from %s", ipAddress)
-	receipt, err := fh.db.GetFundingReceiptByUsernameAndChainPrefix(fh.ctx, ipAddress, prefix)
+	log.Infof("request from %s", r.RemoteAddr)
+	receipt, err := fh.db.GetFundingReceiptByUsernameAndChainPrefix(fh.ctx, wallet, prefix)
 	if err != nil {
 		httpError(w, err.Error())
 		return
@@ -262,7 +261,7 @@ func (fh FaucetHandler) faucetHttp(w http.ResponseWriter, r *http.Request) {
 	faucet.channel <- FaucetReq{recipient, coins, fees, nil, nil}
 	err = fh.db.SaveFundingReceipt(fh.ctx, db.FundingReceipt{
 		ChainPrefix: prefix,
-		Username:    ipAddress,
+		Username:    wallet,
 		FundedAt:    time.Now(),
 		Amount:      coins,
 	})
